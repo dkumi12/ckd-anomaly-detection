@@ -31,7 +31,8 @@ jobs:
         run: |
           gcloud builds submit api/ \
             --tag europe-west1-docker.pkg.dev/chronic-kd/ml-repo/prediction-api:latest \
-            --project chronic-kd
+            --project chronic-kd \
+            --suppress-logs
 
       - name: Deploy to Cloud Run
         run: |
