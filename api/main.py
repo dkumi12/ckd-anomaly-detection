@@ -8,6 +8,8 @@ from mlflow.tracking import MlflowClient
 from datetime import datetime
 from google.cloud import firestore
 import pandas as pd
+import shap
+import numpy as np
 
 app = FastAPI(title="CKD Prediction API")
 
@@ -50,6 +52,29 @@ def load_production_model():
 
 # Load the model when the API starts
 load_production_model()
+
+# Cache the sklearn pipeline and SHAP explainer after model load
+_pipeline   = None
+_explainer  = None
+_feat_names = None
+
+def load_explainer():
+    global _pipeline, _explainer, _feat_names
+    try:
+        _pipeline  = mlflow.sklearn.load_model("models:/kidney-disease-baseline@Production")
+        preprocessor = _pipeline.named_steps['preprocessor']
+        classifier   = _pipeline.named_steps['classifier']
+        numeric_features = preprocessor.transformers_[0][2]
+        ohe_names = preprocessor.transformers_[1][1].get_feature_names_out(
+            preprocessor.transformers_[1][2]
+        ).tolist()
+        _feat_names = list(numeric_features) + ohe_names
+        _explainer  = shap.TreeExplainer(classifier)
+        print("SHAP explainer loaded.")
+    except Exception as e:
+        print(f"Could not load SHAP explainer: {e}")
+
+load_explainer()
 
 class PatientData(BaseModel):
     # Numeric features
@@ -107,6 +132,25 @@ def predict(data: PatientData):
         print(f"Failed to log to Firestore: {e}")
 
     return {"prediction": pred_value}
+
+@app.post("/explain")
+def explain(data: PatientData):
+    """Returns the top 8 SHAP feature contributions for this prediction."""
+    if _explainer is None or _pipeline is None:
+        raise HTTPException(status_code=503, detail="Explainer not loaded")
+
+    input_df = pd.DataFrame([data.model_dump()])
+    X_transformed = _pipeline.named_steps['preprocessor'].transform(input_df)
+
+    shap_values = _explainer.shap_values(X_transformed)
+    sv = shap_values[1] if isinstance(shap_values, list) else shap_values
+    contributions = sv[0]
+
+    # Build sorted top-8 list
+    pairs = sorted(zip(_feat_names, contributions.tolist()), key=lambda x: abs(x[1]), reverse=True)[:8]
+    return {
+        "top_features": [{"feature": f, "shap_value": round(v, 4)} for f, v in pairs]
+    }
 
 @app.get("/health")
 def health_check():
