@@ -27,16 +27,13 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+
       - name: Build and push Docker image
         run: |
-          BUILD_ID=$(gcloud builds submit api/ \
-            --tag europe-west1-docker.pkg.dev/chronic-kd/ml-repo/prediction-api:latest \
-            --project chronic-kd \
-            --async \
-            --format="value(id)")
-          echo "Build ID: $BUILD_ID"
-          echo "Waiting for build to complete..."
-          gcloud builds wait $BUILD_ID --project chronic-kd
+          docker build -t europe-west1-docker.pkg.dev/chronic-kd/ml-repo/prediction-api:latest api/
+          docker push europe-west1-docker.pkg.dev/chronic-kd/ml-repo/prediction-api:latest
 
       - name: Deploy to Cloud Run
         run: |
