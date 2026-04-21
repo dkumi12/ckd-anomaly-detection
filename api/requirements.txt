@@ -9,4 +9,6 @@ gcsfs
 pydantic
 google-cloud-storage
 google-cloud-firestore
+shap
+numpy
 
