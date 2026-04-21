@@ -1,5 +1,6 @@
 from typing import Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import mlflow
 import mlflow.pyfunc
@@ -9,6 +10,13 @@ from google.cloud import firestore
 import pandas as pd
 
 app = FastAPI(title="CKD Prediction API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 mlflow.set_tracking_uri("https://mlflow-tracking-server-330013579477.europe-west1.run.app")
 
