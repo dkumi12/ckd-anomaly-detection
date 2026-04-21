@@ -1,0 +1,34 @@
+name: Train & Register Model
+
+on:
+  workflow_dispatch:        # run manually from the GitHub Actions tab
+  schedule:
+    - cron: '0 2 * * 1'    # every Monday at 02:00 UTC
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: github-actions-sa@chronic-kd.iam.gserviceaccount.com
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r src/requirements.txt
+
+      - name: Run training pipeline
+        run: python src/train.py
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          GOOGLE_CLOUD_PROJECT: chronic-kd

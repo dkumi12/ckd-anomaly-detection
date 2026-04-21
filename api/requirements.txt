@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+mlflow>=3.0.0
+pandas
+scikit-learn
+xgboost
+lightgbm
+gcsfs
+pydantic
+google-cloud-storage
+google-cloud-firestore

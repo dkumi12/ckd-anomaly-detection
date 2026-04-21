@@ -1,0 +1,37 @@
+name: Deploy Prediction API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: github-actions-sa@chronic-kd.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push Docker image
+        run: |
+          gcloud builds submit api/ \
+            --tag europe-west1-docker.pkg.dev/chronic-kd/ml-repo/prediction-api:latest \
+            --project chronic-kd
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services update prediction-api \
+            --image europe-west1-docker.pkg.dev/chronic-kd/ml-repo/prediction-api:latest \
+            --region europe-west1 \
+            --project chronic-kd

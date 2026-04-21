@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+dist/
+build/
+shap_summary.png
+shap_values.json
+*.pkl
+src/mlruns/
+*-key.json
+terraform.tfstate
+terraform.tfstate.backup
