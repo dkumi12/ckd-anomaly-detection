@@ -133,9 +133,69 @@ def predict(data: PatientData):
 
     return {"prediction": pred_value}
 
+
+# Plain-English labels for every feature the model knows about
+FEATURE_LABELS = {
+    # Numeric
+    "age":  "Age",
+    "bp":   "Blood Pressure",
+    "bgr":  "Blood Glucose",
+    "bu":   "Blood Urea",
+    "sc":   "Serum Creatinine",
+    "sod":  "Sodium Level",
+    "pot":  "Potassium Level",
+    "hemo": "Haemoglobin",
+    "pcv":  "Packed Cell Volume",
+    "wc":   "White Blood Cell Count",
+    "rc":   "Red Blood Cell Count",
+    # Categorical — OHE expands these into feature_value pairs
+    "sg_1.005":      "Specific Gravity (very low)",
+    "sg_1.01":       "Specific Gravity (low)",
+    "sg_1.015":      "Specific Gravity (normal-low)",
+    "sg_1.02":       "Specific Gravity (normal)",
+    "sg_1.025":      "Specific Gravity (normal-high)",
+    "al_0.0":        "Albumin (none)",
+    "al_1.0":        "Albumin (trace)",
+    "al_2.0":        "Albumin (moderate)",
+    "al_3.0":        "Albumin (high)",
+    "al_4.0":        "Albumin (very high)",
+    "al_5.0":        "Albumin (severe)",
+    "su_0.0":        "Sugar (none)",
+    "su_1.0":        "Sugar (trace)",
+    "su_2.0":        "Sugar (moderate)",
+    "su_3.0":        "Sugar (high)",
+    "su_4.0":        "Sugar (very high)",
+    "su_5.0":        "Sugar (severe)",
+    "rbc_abnormal":  "Red Blood Cells (abnormal)",
+    "rbc_normal":    "Red Blood Cells (normal)",
+    "pc_abnormal":   "Pus Cells (abnormal)",
+    "pc_normal":     "Pus Cells (normal)",
+    "pcc_present":   "Pus Cell Clumps (present)",
+    "pcc_notpresent":"Pus Cell Clumps (absent)",
+    "ba_present":    "Bacteria (present)",
+    "ba_notpresent": "Bacteria (absent)",
+    "htn_yes":       "High Blood Pressure (yes)",
+    "htn_no":        "High Blood Pressure (no)",
+    "dm_yes":        "Diabetes (yes)",
+    "dm_no":         "Diabetes (no)",
+    "cad_yes":       "Heart Condition (yes)",
+    "cad_no":        "Heart Condition (no)",
+    "appet_good":    "Appetite (good)",
+    "appet_poor":    "Appetite (poor)",
+    "pe_yes":        "Swollen Feet/Ankles (yes)",
+    "pe_no":         "Swollen Feet/Ankles (no)",
+    "ane_yes":       "Anaemia (yes)",
+    "ane_no":        "Anaemia (no)",
+}
+
+def humanise(raw_name: str) -> str:
+    """Convert a raw model feature name to a plain-English label."""
+    return FEATURE_LABELS.get(raw_name, raw_name.replace("_", " ").title())
+
+
 @app.post("/explain")
 def explain(data: PatientData):
-    """Returns the top 8 SHAP feature contributions for this prediction."""
+    """Returns the top 8 SHAP feature contributions with plain-English labels."""
     if _explainer is None or _pipeline is None:
         raise HTTPException(status_code=503, detail="Explainer not loaded")
 
@@ -146,10 +206,12 @@ def explain(data: PatientData):
     sv = shap_values[1] if isinstance(shap_values, list) else shap_values
     contributions = sv[0]
 
-    # Build sorted top-8 list
     pairs = sorted(zip(_feat_names, contributions.tolist()), key=lambda x: abs(x[1]), reverse=True)[:8]
     return {
-        "top_features": [{"feature": f, "shap_value": round(v, 4)} for f, v in pairs]
+        "top_features": [
+            {"feature": humanise(f), "shap_value": round(v, 4)}
+            for f, v in pairs
+        ]
     }
 
 @app.get("/health")
